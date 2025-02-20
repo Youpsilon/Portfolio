@@ -1,0 +1,2 @@
+asset/models/renard-run.glb !text !filter !merge !diff
+*.glb !text !filter !merge !diff

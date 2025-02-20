@@ -1,0 +1,80 @@
+:root {
+    --bg-color: #121212;  /* couleur de fond */
+    --cube-color: #BB86FC; /* couleur du cube */
+}
+
+
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #121212; /* Fond sombre */
+    color: #e1e1e1;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+canvas {
+    display: block;
+}
+
+
+/* Optionnel : Style pour un header si besoin */
+header {
+    background-color: #1F1B24;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #333;
+}
+
+header h1 {
+    color: #BB86FC; /* Accent violet */
+    margin: 0;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+/* Optionnel : Style pour un footer */
+footer {
+    background-color: #1F1B24;
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #333;
+    font-size: 14px;
+    color: #E1E1E1;
+}
+
+#mobile-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 100; /* Au-dessus du canvas */
+}
+
+/* Boutons ronds avec icône */
+#mobile-controls button {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #fff;
+}
+
+/* Style pour le bouton course activé */
+#mobile-controls button.active {
+    background-color: rgba(255, 0, 0, 0.8);
+}
+
+/* Cacher les contrôles sur grand écran (desktop) */
+@media (min-width: 768px) {
+    #mobile-controls {
+        display: none;
+    }
+}
+
+
+
+
