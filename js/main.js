@@ -6,6 +6,9 @@ const cameraOffset = new THREE.Vector3(10, 6, 50);
 
 // Mécanique du saut révisée avec physique réaliste
 let isJumping = false;
+
+let overlayVisible = false;
+
 // Pour un saut réaliste, nous utilisons la gravité terrestre
 const earthGravity = 22; // m/s²
 const desiredJumpHeight = 2.5; // hauteur souhaitée en mètres
@@ -186,15 +189,24 @@ function init() {
     startEdgeCenterLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
     startEdgeCenterLocal.y = 0;
 
-    // --- Création du panneau cliquable ---
-    const signGeometry = new THREE.PlaneGeometry(4, 2);
-    const signMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, side: THREE.DoubleSide });
-    sign = new THREE.Mesh(signGeometry, signMaterial);
-    sign.position.copy(startEdgeCenterLocal).add(new THREE.Vector3(5, 1, 0));
-    sign.rotation.y = 3 * Math.PI / 4;
-    sign.castShadow = false;
-    sign.receiveShadow = false;
-    scene.add(sign);
+    // --- Chargement du panneau cliquable (panneau.glb) ---
+    const loaderPanel = new THREE.GLTFLoader();
+    loaderPanel.load(
+        'asset/models/panneau.glb', // Assurez-vous que le chemin est correct
+        function (gltf) {
+            sign = gltf.scene;
+            // Optionnel : ajuster l'échelle, la position et la rotation
+            sign.scale.set(0.5, 0.5, 0.5); // Adaptez selon la taille souhaitée
+            sign.position.copy(startEdgeCenterLocal).add(new THREE.Vector3(5, 0, 0));
+            sign.rotation.y = 3 *Math.PI / 4;
+            scene.add(sign);
+        },
+        undefined,
+        function (error) {
+            console.error('Erreur de chargement du panneau :', error);
+        }
+    );
+
 
     // --- Chargement des modèles et animations ---
     const loader = new THREE.GLTFLoader();
@@ -395,7 +407,31 @@ function init() {
     window.addEventListener("keyup", (e) => { keys[e.code] = false; }, false);
     window.addEventListener("wheel", onMouseWheel, false);
     window.addEventListener("mousedown", onDocumentMouseDown, false);
+
+
+
+    document.getElementById('closeOverlay').addEventListener('click', exitFocusMode);
+
 }
+
+
+function exitFocusMode() {
+    // Masquer l'overlay immédiatement
+    document.getElementById('infoOverlay').classList.add('hidden');
+    overlayVisible = false;
+
+    // Configurer la transition de retour de la caméra vers le mode "follow"
+    cameraStartPos.copy(camera.position);
+    cameraStartZoom = camera.zoom;
+    cameraStartLookAt.copy(sign.position);
+    cameraTargetPos.copy(player.position).add(cameraOffset);
+    cameraTargetZoom = 4;
+    cameraTargetLookAt.copy(player.position);
+    cameraAnimationStartTime = performance.now();
+    newCameraMode = "follow";
+    cameraAnimating = true;
+}
+
 
 function createTree() {
     const treeGroup = new THREE.Group();
@@ -481,12 +517,13 @@ function onDocumentMouseDown(event) {
     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObject(sign);
+    // Passage du second paramètre à true pour détecter les enfants de 'sign'
+    const intersects = raycaster.intersectObject(sign, true);
     if (intersects.length > 0 && !cameraAnimating) {
         if (cameraMode === "follow") {
             cameraStartPos.copy(player.position).add(cameraOffset);
             cameraStartLookAt.copy(player.position);
-            let signForward = new THREE.Vector3(0, 0, 1);
+            let signForward = new THREE.Vector3(0, 5, 1);
             signForward.applyQuaternion(sign.quaternion);
             const desiredDistance = 20;
             cameraTargetPos.copy(sign.position).sub(signForward.multiplyScalar(desiredDistance));
@@ -495,19 +532,11 @@ function onDocumentMouseDown(event) {
             cameraAnimationStartTime = performance.now();
             newCameraMode = "sign";
             cameraAnimating = true;
-        } else if (cameraMode === "sign") {
-            cameraStartPos.copy(camera.position);
-            cameraStartZoom = camera.zoom;
-            cameraStartLookAt.copy(sign.position);
-            cameraTargetPos.copy(player.position).add(cameraOffset);
-            cameraTargetZoom = 4;
-            cameraTargetLookAt.copy(player.position);
-            cameraAnimationStartTime = performance.now();
-            newCameraMode = "follow";
-            cameraAnimating = true;
         }
     }
 }
+
+
 
 function onRunFinished(event) {
     if (event.action === runAction) {
@@ -574,6 +603,12 @@ function animate() {
         camera.position.copy(player.position).add(cameraOffset);
         camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 2, 0)));
     }
+
+    if (!cameraAnimating && cameraMode === "sign" && !overlayVisible) {
+        document.getElementById('infoOverlay').classList.remove('hidden');
+        overlayVisible = true;
+    }
+
 
     if (player) {
         const forward = new THREE.Vector3(Math.cos(Math.PI / 4), 0, -Math.sin(Math.PI / 4));
