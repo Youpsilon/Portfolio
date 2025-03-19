@@ -658,3 +658,11 @@ function animate() {
     }
     renderer.render(scene, camera);
 }
+
+// À placer vers la fin de votre fonction init() ou dès que le DOM est prêt
+document.getElementById('enterSite').addEventListener('click', function() {
+    const landingPage = document.getElementById('landingPage');
+    landingPage.classList.add('hidden');
+});
+
+
