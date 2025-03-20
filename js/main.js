@@ -3,125 +3,180 @@ let scene, camera, renderer;
 let player; // Modèle chargé depuis Blender
 const speed = 2;
 const cameraOffset = new THREE.Vector3(10, 6, 50);
-
-// Mécanique du saut révisée avec physique réaliste
 let isJumping = false;
-
+let panels = [];
 let overlayVisible = false;
-
-// Pour un saut réaliste, nous utilisons la gravité terrestre
-const earthGravity = 22; // m/s²
-const desiredJumpHeight = 2.5; // hauteur souhaitée en mètres
-const jumpInitialVelocity = Math.sqrt(2 * earthGravity * desiredJumpHeight); // ~7.67 m/s
+const earthGravity = 22;
+const desiredJumpHeight = 2.5;
+const jumpInitialVelocity = Math.sqrt(2 * earthGravity * desiredJumpHeight);
 let jumpVelocityY = 0;
-
-// Objet pour suivre l'état des touches
 let keys = {};
-
-// Variables pour l'animation de la caméra
-let cameraMode = "follow"; // "follow" ou "sign"
+let cameraMode = "follow";
 let cameraAnimating = false;
 let cameraAnimationStartTime = 0;
-const cameraAnimationDuration = 1000; // durée en ms
+const cameraAnimationDuration = 1000;
 let cameraStartPos = new THREE.Vector3();
 let cameraTargetPos = new THREE.Vector3();
 let cameraStartZoom = 4;
 let cameraTargetZoom = 4;
 let newCameraMode = "follow";
-
-// Variables pour interpoler l'orientation (lookAt) de la caméra
 let cameraStartLookAt = new THREE.Vector3();
 let cameraTargetLookAt = new THREE.Vector3();
-
 let jumpAction, jumpClip;
-let jumpStartTime = 0;
-let skyCylinder;
-
-let sign;
-
 let lastFrameTime = performance.now();
 let mixer, idleAction, runAction, runClip;
-
-// Pour la position de départ sur la route (pour le placement des lampadaires)
 let startEdgeCenterLocal;
-
 let composer;
-
-// Variables pour la détection du pincement (zoom mobile)
 let initialPinchDistance = null;
-let initialCameraZoom; // Sera assignée après l'initialisation de la caméra
+let initialCameraZoom;
+let isTeleporting = false;
+let teleportStartPos = new THREE.Vector3();
+let teleportTargetPos = new THREE.Vector3();
+let teleportProgress = 0;
+const teleportDuration = 1.5; // Durée du déplacement
+let teleportDelay = 0; // Temps écoulé pour le délai
+const teleportDelayDuration = 0.1; // 200 ms de délai
 
-// Fonction utilitaire pour calculer la distance entre deux doigts
+
+const navigationDestinations = [
+    { id: "home", label: "Accueil", offsetAlong: 10, offsetLateral: -3 },
+    { id: "about", label: "À propos", offsetAlong: 30, offsetLateral: -3 },
+    { id: "projects", label: "Projets", offsetAlong: 50, offsetLateral: -3 },
+    { id: "contact", label: "Contact", offsetAlong: 70, offsetLateral: -3 }
+];
+
+// Fonctions
+function createNavigationPanel(destination) {
+    const loaderPanel = new THREE.GLTFLoader();
+    loaderPanel.load(
+        'asset/models/panneau.glb',
+        function (gltf) {
+            const panel = gltf.scene;
+            panel.scale.set(0.5, 0.5, 0.5);
+            const roadDirection = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
+            const lateralDirection = roadDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+            panel.position.copy(startEdgeCenterLocal)
+                .add(roadDirection.clone().multiplyScalar(destination.offsetAlong))
+                .add(lateralDirection.clone().multiplyScalar(destination.offsetLateral));
+            panel.rotation.y = 3 * Math.PI / 4;
+            panel.userData.destination = destination;
+            scene.add(panel);
+            panels.push(panel);
+            console.log(`Panneau ${destination.id} créé à la position :`, panel.position);
+
+            const panelForward = new THREE.Vector3(0, 0, 1).applyQuaternion(panel.quaternion);
+            const teleportOffset = -1;
+            let teleportPos = panel.position.clone().add(panelForward.multiplyScalar(teleportOffset));
+            const roadStart = startEdgeCenterLocal.clone();
+            const vectorFromStart = teleportPos.clone().sub(roadStart);
+            const projectionAlongRoad = vectorFromStart.dot(roadDirection);
+            teleportPos = roadStart.clone().add(roadDirection.clone().multiplyScalar(projectionAlongRoad));
+            teleportPos.y = 0;
+            destination.teleportPos = teleportPos;
+            destination.cameraPos = destination.teleportPos.clone().add(cameraOffset);
+        },
+        undefined,
+        function(error) {
+            console.error('Erreur de chargement du panneau pour la navigation :', error);
+        }
+    );
+}
+
+function createNavigationPanels() {
+    navigationDestinations.forEach(dest => createNavigationPanel(dest));
+}
+
+function teleportTo(destination) {
+    // Étape 1 : Disparition avec fumée
+    const startSmoke = createSmokeEffect(player.position);
+    player.visible = false;
+    if (!window.activeSmokes) window.activeSmokes = [];
+    window.activeSmokes.push(startSmoke);
+
+    // Initialiser la téléportation avec délai
+    isTeleporting = true;
+    teleportStartPos.copy(player.position);
+    teleportTargetPos.copy(destination.teleportPos);
+    teleportProgress = 0;
+    teleportDelay = 0; // Réinitialiser le délai
+}
+
+function onDocumentMouseDown(event) {
+    event.preventDefault();
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(panels, true);
+    console.log('Intersections avec panels :', intersects);
+    if (intersects.length > 0 && !cameraAnimating) {
+        let clickedObject = intersects[0].object;
+        let destination = null;
+        let panelRoot = null;
+
+        // Remonter la hiérarchie jusqu'à trouver un objet avec userData.destination
+        while (clickedObject && !destination) {
+            destination = clickedObject.userData && clickedObject.userData.destination;
+            if (destination) panelRoot = clickedObject;
+            clickedObject = clickedObject.parent;
+        }
+
+        if (destination && cameraMode === "follow" && panelRoot) {
+            cameraStartPos.copy(player.position).add(cameraOffset);
+            cameraStartLookAt.copy(player.position);
+            // Vecteur "devant" le panneau (direction Z négative pour être face à la face avant)
+            let panelForward = new THREE.Vector3(0, 0, -1).applyQuaternion(panelRoot.quaternion);
+            const desiredDistance = 5;
+            // Positionner la caméra devant le panneau
+            cameraTargetPos.copy(panelRoot.position).add(panelForward.multiplyScalar(desiredDistance));
+            cameraTargetPos.y = 1; // Hauteur de la caméra
+            // Regarder les 3/4 de la hauteur du panneau
+            cameraTargetLookAt.copy(panelRoot.position);
+            cameraTargetLookAt.y = 1; // Environ 3/4 d'une hauteur estimée à 5 unités
+            cameraStartZoom = camera.zoom;
+            cameraTargetZoom = 3;
+            cameraAnimationStartTime = performance.now();
+            newCameraMode = "sign";
+            cameraAnimating = true;
+            showOverlay(`overlay-${destination.id}`);
+        }
+    }
+}
+
+function showOverlay(overlayId) {
+    document.querySelectorAll('.overlay').forEach(overlay => overlay.classList.add('hidden'));
+    const overlay = document.getElementById(overlayId);
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        overlayVisible = true;
+    }
+}
+
 function getPinchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-// --- Gestion des boutons mobiles ---
-// Ces écouteurs supposent que les éléments HTML avec les IDs "left", "right", "jump" et "run" existent.
-document.getElementById("left").addEventListener("touchstart", function(e) {
-    e.preventDefault();
-    keys["ArrowLeft"] = true;
-});
-document.getElementById("left").addEventListener("touchend", function(e) {
-    e.preventDefault();
-    keys["ArrowLeft"] = false;
-});
-
-document.getElementById("right").addEventListener("touchstart", function(e) {
-    e.preventDefault();
-    keys["ArrowRight"] = true;
-});
-document.getElementById("right").addEventListener("touchend", function(e) {
-    e.preventDefault();
-    keys["ArrowRight"] = false;
-});
-
-document.getElementById("jump").addEventListener("touchstart", function(e) {
-    e.preventDefault();
-    if (!isJumping) {
-        keys["Space"] = true;
-    }
-});
-document.getElementById("jump").addEventListener("touchend", function(e) {
-    e.preventDefault();
-    keys["Space"] = false;
-});
-
-// Bouton Course (toggle)
-let runEnabled = false;
-document.getElementById("run").addEventListener("click", function(e) {
-    e.preventDefault();
-    runEnabled = !runEnabled;
-    keys["ShiftLeft"] = runEnabled;
-    this.classList.toggle("active", runEnabled);
-});
-
-// --- Initialisation et animation ---
-init();
-animate();
-
 function init() {
-    // Récupération des couleurs définies en CSS
     const rootStyles = getComputedStyle(document.documentElement);
     const bgColor = rootStyles.getPropertyValue('--bg-color').trim();
-
-    // --- Scène ---
     scene = new THREE.Scene();
+
+    document.querySelectorAll('.closeOverlay').forEach(button => button.addEventListener('click', exitFocusMode));
 
     const aspect = window.innerWidth / window.innerHeight;
     camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 500);
     camera.position.set(0, 20, 20);
     camera.lookAt(new THREE.Vector3(0, 0, 0));
-    camera.zoom = 4; // Zoom initial
+    camera.zoom = 4;
     camera.updateProjectionMatrix();
     initialCameraZoom = camera.zoom;
 
-    // --- Renderer ---
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -131,8 +186,7 @@ function init() {
     composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
 
-    // --- Gestion du zoom par pincement sur mobile ---
-    renderer.domElement.addEventListener('touchstart', function(e) {
+    renderer.domElement.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
             e.preventDefault();
             initialPinchDistance = getPinchDistance(e.touches);
@@ -140,7 +194,7 @@ function init() {
         }
     }, { passive: false });
 
-    renderer.domElement.addEventListener('touchmove', function(e) {
+    renderer.domElement.addEventListener('touchmove', (e) => {
         if (e.touches.length === 2 && initialPinchDistance !== null) {
             e.preventDefault();
             const currentDistance = getPinchDistance(e.touches);
@@ -151,22 +205,53 @@ function init() {
         }
     }, { passive: false });
 
-    renderer.domElement.addEventListener('touchend', function(e) {
-        if (e.touches.length < 2) {
-            initialPinchDistance = null;
-        }
+    renderer.domElement.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) initialPinchDistance = null;
     });
 
-    // --- Lumières ---
+    document.querySelectorAll('#menu li').forEach(item => {
+        item.addEventListener('click', () => {
+            const destId = item.getAttribute('data-destination');
+            const destination = navigationDestinations.find(dest => dest.id === destId);
+            if (destination) teleportTo(destination);
+        });
+    });
+
+    const leftBtn = document.getElementById("left");
+    if (leftBtn) {
+        leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowLeft"] = true; });
+        leftBtn.addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowLeft"] = false; });
+    }
+    const rightBtn = document.getElementById("right");
+    if (rightBtn) {
+        rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); keys["ArrowRight"] = true; });
+        rightBtn.addEventListener("touchend", (e) => { e.preventDefault(); keys["ArrowRight"] = false; });
+    }
+    const jumpBtn = document.getElementById("jump");
+    if (jumpBtn) {
+        jumpBtn.addEventListener("touchstart", (e) => { e.preventDefault(); if (!isJumping) keys["Space"] = true; });
+        jumpBtn.addEventListener("touchend", (e) => { e.preventDefault(); keys["Space"] = false; });
+    }
+    let runEnabled = false;
+    const runBtn = document.getElementById("run");
+    if (runBtn) {
+        runBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            runEnabled = !runEnabled;
+            keys["ShiftLeft"] = runEnabled;
+            runBtn.classList.toggle("active", runEnabled);
+        });
+    }
+
     const moonAmbient = new THREE.AmbientLight(0x666666, 1.5);
     scene.add(moonAmbient);
-
     const moonLight = new THREE.DirectionalLight(0x99aaff, 1.4);
     moonLight.position.set(-50, 60, -50);
     moonLight.castShadow = false;
     scene.add(moonLight);
 
-    // --- Création de la route ---
+    createNavigationPanels();
+
     const roadLength = 200;
     const roadWidth = 5;
     const segmentsX = 20;
@@ -175,191 +260,70 @@ function init() {
     geometry.translate(roadLength / 2, roadWidth / 2, 0);
     geometry.rotateX(-Math.PI / 2);
     geometry.rotateY(Math.PI / 4);
-    const material = new THREE.MeshStandardMaterial({
-        color: 0x592C0C,
-        side: THREE.DoubleSide
-    });
+    const material = new THREE.MeshStandardMaterial({ color: 0x592C0C, side: THREE.DoubleSide });
     const road = new THREE.Mesh(geometry, material);
     road.receiveShadow = true;
     scene.add(road);
 
-    // --- Position initiale du joueur ---
     startEdgeCenterLocal = new THREE.Vector3(0, roadWidth / 2, 0);
     startEdgeCenterLocal.applyAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     startEdgeCenterLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
     startEdgeCenterLocal.y = 0;
 
-    // --- Chargement du panneau cliquable (panneau.glb) ---
-    const loaderPanel = new THREE.GLTFLoader();
-    loaderPanel.load(
-        'asset/models/panneau.glb', // Assurez-vous que le chemin est correct
-        function (gltf) {
-            sign = gltf.scene;
-            // Optionnel : ajuster l'échelle, la position et la rotation
-            sign.scale.set(0.5, 0.5, 0.5); // Adaptez selon la taille souhaitée
-            sign.position.copy(startEdgeCenterLocal).add(new THREE.Vector3(5, 0, 0));
-            sign.rotation.y = 3 *Math.PI / 4;
-            scene.add(sign);
-        },
-        undefined,
-        function (error) {
-            console.error('Erreur de chargement du panneau :', error);
-        }
-    );
-
-
-    // --- Chargement des modèles et animations ---
     const loader = new THREE.GLTFLoader();
-    loader.load(
-        'asset/models/renard-fixe.glb',
-        function (gltf) {
-            player = gltf.scene;
-            player.scale.set(0.5, 0.5, 0.5);
-            player.position.copy(startEdgeCenterLocal);
-            player.rotation.y = -Math.PI / 4;
-            player.traverse(child => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = false;
-                }
-            });
-            scene.add(player);
-            if (gltf.animations && gltf.animations.length) {
-                mixer = new THREE.AnimationMixer(player);
-                idleAction = mixer.clipAction(gltf.animations[0]);
-                idleAction.play();
+    loader.load('asset/models/renard-fixe.glb', (gltf) => {
+        player = gltf.scene;
+        player.scale.set(0.5, 0.5, 0.5);
+        player.position.copy(startEdgeCenterLocal);
+        player.rotation.y = -Math.PI / 4;
+        player.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = false;
             }
-        },
-        undefined,
-        function (error) {
-            console.error('Erreur de chargement du modèle :', error);
+        });
+        scene.add(player);
+        if (gltf.animations && gltf.animations.length) {
+            mixer = new THREE.AnimationMixer(player);
+            idleAction = mixer.clipAction(gltf.animations[0]);
+            idleAction.play();
         }
-    );
+    }, undefined, (error) => console.error('Erreur de chargement du modèle :', error));
 
     const loaderRun = new THREE.GLTFLoader();
-    loaderRun.load(
-        'asset/models/renard-run.glb',
-        function (gltf) {
-            if (gltf.animations && gltf.animations.length && mixer) {
-                runClip = gltf.animations[0];
-                runAction = mixer.clipAction(runClip);
-                runAction.play();
-                runAction.paused = true;
-            }
-        },
-        undefined,
-        function (error) {
-            console.error('Erreur de chargement de l\'animation de course :', error);
+    loaderRun.load('asset/models/renard-run.glb', (gltf) => {
+        if (gltf.animations && gltf.animations.length && mixer) {
+            runClip = gltf.animations[0];
+            runAction = mixer.clipAction(runClip);
+            runAction.play();
+            runAction.paused = true;
         }
-    );
+    }, undefined, (error) => console.error('Erreur de chargement de l\'animation de course :', error));
 
     const loaderJump = new THREE.GLTFLoader();
-    loaderJump.load(
-        'asset/models/renard-jump.glb',
-        function (gltf) {
-            if (gltf.animations && gltf.animations.length && mixer) {
-                jumpClip = gltf.animations[0];
-                jumpAction = mixer.clipAction(jumpClip);
-                jumpAction.loop = THREE.LoopOnce;
-                jumpAction.clampWhenFinished = true;
-            }
-        },
-        undefined,
-        function (error) {
-            console.error('Erreur de chargement de l\'animation de saut :', error);
+    loaderJump.load('asset/models/renard-jump.glb', (gltf) => {
+        if (gltf.animations && gltf.animations.length && mixer) {
+            jumpClip = gltf.animations[0];
+            jumpAction = mixer.clipAction(jumpClip);
+            jumpAction.loop = THREE.LoopOnce;
+            jumpAction.clampWhenFinished = true;
         }
-    );
-
-    // --- Placement des arbres et lampadaires ---
-    let roadDirection = new THREE.Vector3(1, 0, 0);
-    roadDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
-    let lateralDirection = roadDirection.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
-    const manualTreePositions = [
-        { offsetAlong: 5,    offsetLateral: 3,    rotY: 0.2,   scale: 0.8 },
-        { offsetAlong: 7,    offsetLateral: 5,    rotY: -0.3,  scale: 1.1 },
-        { offsetAlong: 10,   offsetLateral: -5,   rotY: 0.5,   scale: 0.9 },
-        { offsetAlong: 11.6, offsetLateral: -4.5, rotY: 1.0,   scale: 1 },
-        { offsetAlong: 18,   offsetLateral: 3.5,  rotY: -0.8,  scale: 1.2 },
-        { offsetAlong: 16,   offsetLateral: 5,    rotY: 0.3,   scale: 0.8 },
-        { offsetAlong: 18.8, offsetLateral: -4.0, rotY: 0.1,   scale: 1.0 },
-        { offsetAlong: 26,   offsetLateral: 2.8,  rotY: 0.3,   scale: 0.95 },
-        { offsetAlong: 27.3, offsetLateral: 5.5,  rotY: 0.0,   scale: 1.2 },
-        { offsetAlong: 30,   offsetLateral: -3.2, rotY: 0.5,   scale: 0.9 },
-        { offsetAlong: 36,   offsetLateral: 2.8,  rotY: -0.1,  scale: 1.0 },
-        { offsetAlong: 37.5, offsetLateral: 4.5,  rotY: 0.4,   scale: 1.05 },
-        { offsetAlong: 40,   offsetLateral: -3.8, rotY: 0.7,   scale: 0.85 },
-        { offsetAlong: 41,   offsetLateral: -5.5, rotY: -0.4,  scale: 1.2 },
-        { offsetAlong: 46,   offsetLateral: 4.0,  rotY: 0.3,   scale: 1.0 },
-        { offsetAlong: 47.5, offsetLateral: 3.0,  rotY: -0.6,  scale: 1.1 },
-        { offsetAlong: 51.6, offsetLateral: -5.2, rotY: 0.2,   scale: 0.9 },
-        { offsetAlong: 60,   offsetLateral: 4.8,  rotY: 0.8,   scale: 1.3 },
-        { offsetAlong: 61.6, offsetLateral: -3.5, rotY: -0.2,  scale: 1.0 },
-        { offsetAlong: 65,   offsetLateral: 3.5,  rotY: 0.1,   scale: 1.0 },
-        { offsetAlong: 68,   offsetLateral: -4.0, rotY: 0.2,   scale: 1.1 },
-        { offsetAlong: 70,   offsetLateral: 4.2,  rotY: -0.3,  scale: 0.95 },
-        { offsetAlong: 73,   offsetLateral: -3.8, rotY: 0.5,   scale: 1.0 },
-        { offsetAlong: 76,   offsetLateral: 3.0,  rotY: 0.0,   scale: 1.05 },
-        { offsetAlong: 79,   offsetLateral: -5.0, rotY: 0.3,   scale: 1.0 },
-        { offsetAlong: 82,   offsetLateral: 4.5,  rotY: -0.2,  scale: 1.1 },
-        { offsetAlong: 85,   offsetLateral: -4.5, rotY: 0.4,   scale: 0.9 },
-        { offsetAlong: 88,   offsetLateral: 3.8,  rotY: 0.1,   scale: 1.0 },
-        { offsetAlong: 91,   offsetLateral: -3.2, rotY: -0.1,  scale: 1.2 },
-        { offsetAlong: 94,   offsetLateral: 4.0,  rotY: 0.2,   scale: 1.0 },
-        { offsetAlong: 97,   offsetLateral: -4.0, rotY: 0.3,   scale: 1.1 },
-        { offsetAlong: 103,  offsetLateral: 3.5,  rotY: -0.3,  scale: 0.95 },
-        { offsetAlong: 105,  offsetLateral: -3.5, rotY: 0.4,   scale: 1.0 },
-        { offsetAlong: 111,  offsetLateral: 4.2,  rotY: 0.0,   scale: 1.0 },
-        { offsetAlong: 115,  offsetLateral: -4.5, rotY: 0.2,   scale: 1.1 },
-        { offsetAlong: 122,  offsetLateral: 3.0,  rotY: -0.2,  scale: 0.9 },
-        { offsetAlong: 125,  offsetLateral: 4.5,  rotY: 0.3,   scale: 1.0 },
-        { offsetAlong: 129,  offsetLateral: -3.8, rotY: 0.1,   scale: 1.2 },
-        { offsetAlong: 136,  offsetLateral: 3.8,  rotY: -0.4,  scale: 1.0 },
-        { offsetAlong: 141,  offsetLateral: -4.0, rotY: 0.5,   scale: 1.1 },
-        { offsetAlong: 144,  offsetLateral: 4.0,  rotY: 0.0,   scale: 1.0 },
-        { offsetAlong: 153,  offsetLateral: -3.5, rotY: 0.3,   scale: 1.0 },
-        { offsetAlong: 155,  offsetLateral: 4.2,  rotY: -0.2,  scale: 1.1 },
-        { offsetAlong: 160,  offsetLateral: -4.5, rotY: 0.2,   scale: 0.95 },
-        { offsetAlong: 163,  offsetLateral: 3.5,  rotY: 0.4,   scale: 1.0 },
-        { offsetAlong: 170,  offsetLateral: -3.8, rotY: -0.1,  scale: 1.0 },
-        { offsetAlong: 172,  offsetLateral: 4.0,  rotY: 0.1,   scale: 1.0 },
-        { offsetAlong: 180,  offsetLateral: -4.0, rotY: 0.3,   scale: 1.1 },
-        { offsetAlong: 185,  offsetLateral: 3.2,  rotY: -0.3,  scale: 0.9 },
-        { offsetAlong: 200,  offsetLateral: -3.5, rotY: 0.0,   scale: 1.0 }
-    ];
-
-    manualTreePositions.forEach(item => {
-        const tree = createTree();
-        tree.position.copy(startEdgeCenterLocal)
-            .add(roadDirection.clone().multiplyScalar(item.offsetAlong))
-            .add(lateralDirection.clone().multiplyScalar(item.offsetLateral));
-        tree.rotation.y = item.rotY;
-        tree.scale.set(item.scale, item.scale, item.scale);
-        scene.add(tree);
-    });
+    }, undefined, (error) => console.error('Erreur de chargement de l\'animation de saut :', error));
 
     for (let d = 10; d < roadLength; d += 30) {
         const lampPost = createLampPost(d);
         scene.add(lampPost);
     }
 
-    // --- Chargement du terrain ---
     const loaderTerrain = new THREE.GLTFLoader();
-    loaderTerrain.load(
-        'asset/models/plan.glb',
-        function(gltf) {
-            const terrain = gltf.scene;
-            terrain.rotation.y = Math.PI / 4;
-            terrain.position.set(0, -0.01, 0);
-            terrain.scale.set(30, 30, 30);
-            scene.add(terrain);
-        },
-        undefined,
-        function(error) {
-            console.error('Erreur de chargement du terrain plan.glb :', error);
-        }
-    );
+    loaderTerrain.load('asset/models/plan.glb', (gltf) => {
+        const terrain = gltf.scene;
+        terrain.rotation.y = Math.PI / 4;
+        terrain.position.set(0, -0.01, 0);
+        terrain.scale.set(30, 30, 30);
+        scene.add(terrain);
+    }, undefined, (error) => console.error('Erreur de chargement du terrain :', error));
 
-    // --- Création du ciel ---
     function createStarryTexture(width, height, starCount) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -370,7 +334,7 @@ function init() {
         for (let i = 0; i < starCount; i++) {
             let x = Math.random() * width;
             let y = Math.random() * height;
-            let radius = Math.random() * 0.8 + 0.4 ;
+            let radius = Math.random() * 0.8 + 0.4;
             let alpha = Math.random() * 0.8 + 0.2;
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.beginPath();
@@ -379,6 +343,7 @@ function init() {
         }
         return canvas;
     }
+
     function createSkyCylinder() {
         const radius = 400;
         const height = 400;
@@ -389,10 +354,7 @@ function init() {
         skyTexture.wrapS = THREE.RepeatWrapping;
         skyTexture.wrapT = THREE.RepeatWrapping;
         skyTexture.repeat.set(8, 4);
-        const material = new THREE.MeshBasicMaterial({
-            map: skyTexture,
-            side: THREE.BackSide
-        });
+        const material = new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.BackSide });
         const skyCylinder = new THREE.Mesh(geometry, material);
         skyCylinder.position.y = height / 2 - 50;
         skyCylinder.rotation.y = Math.PI / 4;
@@ -401,59 +363,30 @@ function init() {
     const skyCylinderMesh = createSkyCylinder();
     scene.add(skyCylinderMesh);
 
-    // --- Événements généraux ---
     window.addEventListener("resize", onWindowResize, false);
     window.addEventListener("keydown", (e) => { keys[e.code] = true; }, false);
     window.addEventListener("keyup", (e) => { keys[e.code] = false; }, false);
     window.addEventListener("wheel", onMouseWheel, false);
     window.addEventListener("mousedown", onDocumentMouseDown, false);
 
-
-
-    document.getElementById('closeOverlay').addEventListener('click', exitFocusMode);
-
+    document.getElementById('enterSite').addEventListener('click', () => {
+        document.getElementById('landingPage').classList.add('hidden');
+    });
 }
 
-
 function exitFocusMode() {
-    // Masquer l'overlay immédiatement
-    document.getElementById('infoOverlay').classList.add('hidden');
+    document.querySelectorAll('.overlay').forEach(overlay => overlay.classList.add('hidden'));
     overlayVisible = false;
-
-    // Configurer la transition de retour de la caméra vers le mode "follow"
     cameraStartPos.copy(camera.position);
     cameraStartZoom = camera.zoom;
-    cameraStartLookAt.copy(sign.position);
+    cameraStartLookAt.copy(cameraTargetLookAt);
     cameraTargetPos.copy(player.position).add(cameraOffset);
     cameraTargetZoom = 4;
-    cameraTargetLookAt.copy(player.position);
+    cameraTargetLookAt.copy(player.position).add(new THREE.Vector3(0, 2, 0)); // Aligner avec le mode "follow"
     cameraAnimationStartTime = performance.now();
     newCameraMode = "follow";
     cameraAnimating = true;
 }
-
-
-function createTree() {
-    const treeGroup = new THREE.Group();
-    const loader = new THREE.GLTFLoader();
-    const treeModels = ['asset/models/arbre-1.glb', 'asset/models/arbre-2.glb'];
-    const chosenModel = treeModels[Math.floor(Math.random() * treeModels.length)];
-    loader.load(
-        chosenModel,
-        function(gltf) {
-            const treeModel = gltf.scene;
-            treeModel.scale.set(1, 1, 1);
-            treeGroup.add(treeModel);
-        },
-        undefined,
-        function(error) {
-            console.error('Erreur de chargement du modèle d\'arbre :', error);
-        }
-    );
-    return treeGroup;
-}
-
-
 function createLampPost(distance) {
     const lampPostGroup = new THREE.Group();
     const forward = new THREE.Vector3(Math.cos(Math.PI / 4), 0, -Math.sin(Math.PI / 4));
@@ -465,7 +398,7 @@ function createLampPost(distance) {
         .add(left.clone().multiplyScalar(lateralOffset));
 
     const loader = new THREE.GLTFLoader();
-    loader.load('asset/models/lampadaire.glb', function(gltf) {
+    loader.load('asset/models/lampadaire.glb', (gltf) => {
         const lampPostModel = gltf.scene;
         lampPostModel.scale.set(0.5, 0.5, 0.5);
         lampPostModel.rotation.y = -Math.PI / 4;
@@ -476,7 +409,6 @@ function createLampPost(distance) {
         directLight.castShadow = true;
         directLight.shadow.mapSize.width = 256;
         directLight.shadow.mapSize.height = 256;
-
         directLight.shadow.camera.near = 0.5;
         directLight.shadow.camera.far = 50;
         directLight.position.set(3, 5, 0);
@@ -501,49 +433,92 @@ function onMouseWheel(event) {
 
 function onWindowResize() {
     const aspect = window.innerWidth / window.innerHeight;
-    const d = 20;
-    camera.left = -d * aspect;
-    camera.right = d * aspect;
-    camera.top = d;
-    camera.bottom = -d;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function onDocumentMouseDown(event) {
-    event.preventDefault();
-    const mouse = new THREE.Vector2();
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-    // Passage du second paramètre à true pour détecter les enfants de 'sign'
-    const intersects = raycaster.intersectObject(sign, true);
-    if (intersects.length > 0 && !cameraAnimating) {
-        if (cameraMode === "follow") {
-            cameraStartPos.copy(player.position).add(cameraOffset);
-            cameraStartLookAt.copy(player.position);
-            let signForward = new THREE.Vector3(0, 5, 1);
-            signForward.applyQuaternion(sign.quaternion);
-            const desiredDistance = 20;
-            cameraTargetPos.copy(sign.position).sub(signForward.multiplyScalar(desiredDistance));
-            cameraTargetPos.y = 3;
-            cameraTargetLookAt.copy(sign.position);
-            cameraAnimationStartTime = performance.now();
-            newCameraMode = "sign";
-            cameraAnimating = true;
+function createSmokeEffect(position) {
+    const particleCount = 50;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+    const lifetimes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = position.x + (Math.random() - 0.5) * 2;
+        positions[i * 3 + 1] = position.y + Math.random() * 2;
+        positions[i * 3 + 2] = position.z + (Math.random() - 0.5) * 2;
+        velocities[i * 3] = (Math.random() - 0.5) * 0.5;
+        velocities[i * 3 + 1] = Math.random() * 1;
+        velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+        lifetimes[i] = Math.random() * 1 + 0.5;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+    geometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
+
+    // Récupérer la couleur violette du CSS
+    const rootStyles = getComputedStyle(document.documentElement);
+    const purpleColor = rootStyles.getPropertyValue('--purple')?.trim() || '#BB86FC'; // Fallback si non défini
+
+    const material = new THREE.PointsMaterial({
+        color: purpleColor,
+        size: 0.5,
+        map: createCircleTexture(), // Texture ronde
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+    });
+
+    const smoke = new THREE.Points(geometry, material);
+    smoke.userData = { time: 0, maxLifetime: 1.5 };
+    scene.add(smoke);
+    return smoke;
+}
+function updateSmokeEffect(smoke, dt) {
+    smoke.userData.time += dt;
+    const positions = smoke.geometry.attributes.position.array;
+    const velocities = smoke.geometry.attributes.velocity.array;
+    const lifetimes = smoke.geometry.attributes.lifetime.array;
+
+    for (let i = 0; i < lifetimes.length; i++) {
+        if (lifetimes[i] > 0) {
+            positions[i * 3] += velocities[i * 3] * dt;     // X
+            positions[i * 3 + 1] += velocities[i * 3 + 1] * dt; // Y
+            positions[i * 3 + 2] += velocities[i * 3 + 2] * dt; // Z
+            lifetimes[i] -= dt;
+            if (lifetimes[i] <= 0) {
+                positions[i * 3 + 1] = -1000; // Cacher hors de vue
+            }
         }
     }
+
+    smoke.geometry.attributes.position.needsUpdate = true;
+    smoke.geometry.attributes.lifetime.needsUpdate = true;
+
+    // Supprimer la fumée quand elle est finie
+    if (smoke.userData.time >= smoke.userData.maxLifetime) {
+        scene.remove(smoke);
+        smoke.geometry.dispose();
+        smoke.material.dispose();
+        return false; // Indique que l’effet est terminé
+    }
+    return true; // Effet en cours
 }
 
-
-
-function onRunFinished(event) {
-    if (event.action === runAction) {
-        runAction.paused = true;
-        runAction.crossFadeTo(idleAction, 0.2, false);
-        mixer.removeEventListener('finished', onRunFinished);
-    }
+function createCircleTexture() {
+    const size = 32; // Taille de la texture
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF'; // Blanc, la couleur sera appliquée via le matériau
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    return new THREE.CanvasTexture(canvas);
 }
 
 function animate() {
@@ -551,21 +526,15 @@ function animate() {
     let now = performance.now();
     let dt = (now - lastFrameTime) / 1000;
     lastFrameTime = now;
-    if (mixer) {
-        mixer.update(dt);
-    }
+    if (mixer) mixer.update(dt);
 
     let moveSpeed = speed;
     if (keys["ShiftLeft"]) {
         moveSpeed = 4;
-        if (mixer && runAction) {
-            runAction.setEffectiveTimeScale(2);
-        }
+        if (mixer && runAction) runAction.setEffectiveTimeScale(2);
     } else {
         moveSpeed = speed;
-        if (mixer && runAction) {
-            runAction.setEffectiveTimeScale(1);
-        }
+        if (mixer && runAction) runAction.setEffectiveTimeScale(1);
     }
 
     if (mixer && idleAction && runAction) {
@@ -593,24 +562,54 @@ function animate() {
             t = 1;
             cameraAnimating = false;
             cameraMode = newCameraMode;
+            if (cameraMode === "follow" && player) {
+                camera.position.copy(player.position).add(cameraOffset);
+                camera.zoom = cameraTargetZoom;
+                camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 2, 0)));
+                camera.updateProjectionMatrix();
+            }
+        } else {
+            camera.position.lerpVectors(cameraStartPos, cameraTargetPos, t);
+            camera.zoom = cameraStartZoom + t * (cameraTargetZoom - cameraStartZoom);
+            camera.updateProjectionMatrix();
+            let currentLookAt = new THREE.Vector3().lerpVectors(cameraStartLookAt, cameraTargetLookAt, t);
+            camera.lookAt(currentLookAt);
         }
-        camera.position.lerpVectors(cameraStartPos, cameraTargetPos, t);
-        camera.zoom = cameraStartZoom + t * (cameraTargetZoom - cameraStartZoom);
-        camera.updateProjectionMatrix();
-        let currentLookAt = new THREE.Vector3().lerpVectors(cameraStartLookAt, cameraTargetLookAt, t);
-        camera.lookAt(currentLookAt);
     } else if (cameraMode === "follow" && player) {
         camera.position.copy(player.position).add(cameraOffset);
         camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 2, 0)));
     }
 
-    if (!cameraAnimating && cameraMode === "sign" && !overlayVisible) {
-        document.getElementById('infoOverlay').classList.remove('hidden');
-        overlayVisible = true;
+    // Gérer la téléportation
+    if (isTeleporting) {
+        // Gérer le délai initial
+        teleportDelay += dt;
+        if (teleportDelay < teleportDelayDuration) {
+            // Attendre que le délai soit écoulé
+        } else {
+            // Commencer le déplacement après le délai
+            teleportProgress += dt / teleportDuration;
+            if (teleportProgress >= 1) {
+                teleportProgress = 1;
+                isTeleporting = false;
+                player.position.copy(teleportTargetPos);
+                player.visible = true;
+                const endSmoke = createSmokeEffect(player.position);
+                if (!window.activeSmokes) window.activeSmokes = [];
+                window.activeSmokes.push(endSmoke);
+            } else {
+                // Easing quadratique : lent au début, rapide à la fin
+                const easedProgress = teleportProgress * teleportProgress; // t²
+                player.position.lerpVectors(teleportStartPos, teleportTargetPos, easedProgress);
+            }
+        }
     }
 
+    if (window.activeSmokes) {
+        window.activeSmokes = window.activeSmokes.filter(smoke => updateSmokeEffect(smoke, dt));
+    }
 
-    if (player) {
+    if (player && !isTeleporting) {
         const forward = new THREE.Vector3(Math.cos(Math.PI / 4), 0, -Math.sin(Math.PI / 4));
         if (keys["ArrowRight"] || keys["KeyD"]) {
             player.position.add(forward.clone().multiplyScalar(moveSpeed * dt));
@@ -621,7 +620,6 @@ function animate() {
             player.rotation.y = -Math.PI / 4 + Math.PI;
         }
 
-        // Gestion du saut révisée avec physique réaliste
         if (keys["Space"] && !isJumping) {
             isJumping = true;
             jumpVelocityY = jumpInitialVelocity;
@@ -635,17 +633,13 @@ function animate() {
         }
 
         if (isJumping) {
-            // Mise à jour de la vitesse verticale avec la gravité réelle
             jumpVelocityY -= earthGravity * dt;
             player.position.y += jumpVelocityY * dt;
-            // Si le joueur retombe au sol (position y <= 0)
             if (player.position.y <= 0) {
                 player.position.y = 0;
                 isJumping = false;
                 jumpVelocityY = 0;
-                if (mixer && jumpAction) {
-                    jumpAction.stop();
-                }
+                if (mixer && jumpAction) jumpAction.stop();
                 if (keys["KeyA"] || keys["KeyD"] || keys["ArrowLeft"] || keys["ArrowRight"]) {
                     runAction.reset();
                     runAction.play();
@@ -659,10 +653,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// À placer vers la fin de votre fonction init() ou dès que le DOM est prêt
-document.getElementById('enterSite').addEventListener('click', function() {
-    const landingPage = document.getElementById('landingPage');
-    landingPage.classList.add('hidden');
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    animate();
 });
-
-
