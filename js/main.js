@@ -102,7 +102,14 @@ function teleportTo(destination) {
 }
 
 function onDocumentMouseDown(event) {
-    event.preventDefault();
+    // Vérifier si le clic est sur un élément du menu
+    const menu = document.getElementById('menu');
+    const target = event.target;
+    if (menu.contains(target)) {
+        return; // Ne pas interférer avec les clics sur le menu
+    }
+
+    event.preventDefault(); // Toujours bloquer pour le reste (panneaux)
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
@@ -116,7 +123,6 @@ function onDocumentMouseDown(event) {
         let destination = null;
         let panelRoot = null;
 
-        // Remonter la hiérarchie jusqu'à trouver un objet avec userData.destination
         while (clickedObject && !destination) {
             destination = clickedObject.userData && clickedObject.userData.destination;
             if (destination) panelRoot = clickedObject;
@@ -126,15 +132,12 @@ function onDocumentMouseDown(event) {
         if (destination && cameraMode === "follow" && panelRoot) {
             cameraStartPos.copy(player.position).add(cameraOffset);
             cameraStartLookAt.copy(player.position);
-            // Vecteur "devant" le panneau (direction Z négative pour être face à la face avant)
             let panelForward = new THREE.Vector3(0, 0, -1).applyQuaternion(panelRoot.quaternion);
             const desiredDistance = 5;
-            // Positionner la caméra devant le panneau
             cameraTargetPos.copy(panelRoot.position).add(panelForward.multiplyScalar(desiredDistance));
-            cameraTargetPos.y = 1; // Hauteur de la caméra
-            // Regarder les 3/4 de la hauteur du panneau
+            cameraTargetPos.y = 1;
             cameraTargetLookAt.copy(panelRoot.position);
-            cameraTargetLookAt.y = 1; // Environ 3/4 d'une hauteur estimée à 5 unités
+            cameraTargetLookAt.y = 1;
             cameraStartZoom = camera.zoom;
             cameraTargetZoom = 3;
             cameraAnimationStartTime = performance.now();
@@ -144,6 +147,7 @@ function onDocumentMouseDown(event) {
         }
     }
 }
+document.addEventListener('mousedown', onDocumentMouseDown, false);
 
 function showOverlay(overlayId) {
     document.querySelectorAll('.overlay').forEach(overlay => overlay.classList.add('hidden'));
@@ -186,6 +190,27 @@ function init() {
     composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
 
+    // Listener pour le bouton du menu déroulant
+    const menuToggle = document.getElementById('menu-toggle');
+    if (menuToggle) {
+        menuToggle.addEventListener('click', (event) => {
+            event.stopPropagation(); // Empêche le clic de descendre jusqu’à onDocumentMouseDown
+            const menuContent = document.querySelector('.menu-content');
+            menuContent.classList.toggle('open');
+        });
+    }
+
+    // Listener pour les items du menu
+    document.querySelectorAll('#menu li').forEach(item => {
+        item.addEventListener('click', (event) => {
+            event.stopPropagation(); // Empêche le clic de descendre
+            const destinationId = item.getAttribute('data-destination');
+            const destination = navigationDestinations.find(dest => dest.id === destinationId); // Utilise navigationDestinations
+            if (destination) teleportTo(destination); // Correction ici : juste teleportTo
+            document.querySelector('.menu-content')?.classList.remove('open'); // Ferme le menu après clic
+        });
+    });
+
     renderer.domElement.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
             e.preventDefault();
@@ -209,13 +234,6 @@ function init() {
         if (e.touches.length < 2) initialPinchDistance = null;
     });
 
-    document.querySelectorAll('#menu li').forEach(item => {
-        item.addEventListener('click', () => {
-            const destId = item.getAttribute('data-destination');
-            const destination = navigationDestinations.find(dest => dest.id === destId);
-            if (destination) teleportTo(destination);
-        });
-    });
 
     const leftBtn = document.getElementById("left");
     if (leftBtn) {
