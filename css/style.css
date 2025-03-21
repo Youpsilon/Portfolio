@@ -332,3 +332,40 @@ canvas {
     background: #9a6acc;
 }
 
+.projects-timeline {
+    max-height: 400px; /* Limite la hauteur pour scroll si besoin */
+    overflow-y: auto; /* Scroll vertical si trop de projets */
+    padding: 10px;
+}
+
+.project {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #1a1a1a; /* Fond gris foncé */
+    border: 2px solid var(--cube-color); /* Bordure violette */
+    border-radius: 8px;
+}
+
+.project h3 {
+    margin: 0 0 10px;
+    color: var(--cube-color);
+}
+
+.project p {
+    margin: 0 0 10px;
+}
+
+.project img {
+    display: block;
+    margin: 0 auto 10px;
+}
+
+.project a {
+    color: var(--cube-color);
+    text-decoration: none;
+}
+
+.project a:hover {
+    text-decoration: underline;
+}
+

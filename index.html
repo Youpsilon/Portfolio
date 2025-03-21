@@ -43,50 +43,63 @@
     </div>
 </div>
 
-<!-- Supprime l'ancien #infoOverlay -->
-<!-- Ajoute ces nouveaux blocs -->
+<!-- Modal Accueil -->
 <div id="overlay-home" class="overlay hidden">
     <div class="overlayContent">
-        <h2>Accueil</h2>
-        <p>Bienvenue sur mon portfolio ! Explorez mon univers en 3D.</p>
-        <a href="#" target="_blank">En savoir plus</a>
+        <h2>Bienvenue sur mon chemin créatif !</h2>
+        <p>Je suis [ton nom], développeur et créateur. Explore ma route en 3D pour découvrir mon parcours et mes projets. Chaque panneau te raconte une étape de mon histoire.</p>
         <button class="closeOverlay">Fermer</button>
     </div>
 </div>
 
+<!-- Modal À propos -->
 <div id="overlay-about" class="overlay hidden">
     <div class="overlayContent">
-        <h2>À propos</h2>
-        <p>Je suis un développeur passionné par le web et les jeux.</p>
-        <a href="https://exemple.com/about" target="_blank">Mon parcours</a>
+        <h2>Qui suis-je ?</h2>
+        <p>J’ai commencé à coder à [âge/événement], fasciné par [ce qui t’a motivé].</p>
+        <p>Spécialisé en JS, Three.js, et design 3D, j’aime créer des expériences immersives.</p>
+        <p>Quand je ne code pas, je [hobby].</p>
+        <a href="[lien_cv]" target="_blank">Mon CV</a>
         <button class="closeOverlay">Fermer</button>
     </div>
 </div>
 
+<!-- Modal Projets -->
 <div id="overlay-projects" class="overlay hidden">
     <div class="overlayContent">
-        <h2>Projets</h2>
-        <p>Voici quelques-unes de mes créations.</p>
-        <img src="asset/images/projet1.jpg" alt="Projet 1" style="max-width: 100%;">
-        <a href="https://exemple.com/projects" target="_blank">Voir les projets</a>
+        <h2>Mes créations au fil du temps</h2>
+        <div class="projects-timeline">
+            <div class="project">
+                <h3>Mon premier site web (2020)</h3>
+                <p>Un site statique en HTML/CSS pour apprendre les bases.</p>
+                <img src="asset/images/projet1.jpg" alt="Projet 1" style="max-width: 100%;">
+                <a href="[lien]" target="_blank">Voir le projet</a>
+            </div>
+            <div class="project">
+                <h3>Jeu 2D en JS (2021)</h3>
+                <p>Un petit jeu avec canvas, ma première expérience interactive.</p>
+                <img src="asset/images/projet2.jpg" alt="Projet 2" style="max-width: 100%;">
+                <a href="[lien]" target="_blank">Voir le projet</a>
+            </div>
+            <div class="project">
+                <h3>Portfolio 3D (2025)</h3>
+                <p>Ce site ! Une route en Three.js pour présenter mon évolution.</p>
+                <img src="asset/images/projet3.jpg" alt="Projet 3" style="max-width: 100%;">
+                <p>Tu y es !</p>
+            </div>
+        </div>
         <button class="closeOverlay">Fermer</button>
     </div>
 </div>
 
+<!-- Modal Contact -->
 <div id="overlay-contact" class="overlay hidden">
     <div class="overlayContent">
-        <h2>Contact</h2>
-        <p>Envoyez-moi un message pour collaborer !</p>
-        <a href="mailto:exemple@email.com">Me contacter</a>
-        <button class="closeOverlay">Fermer</button>
-    </div>
-</div>
-
-<!-- Bloc pour le panneau 'sign' (optionnel, si tu veux le garder distinct) -->
-<div id="overlay-sign" class="overlay hidden">
-    <div class="overlayContent">
-        <h2>Panneau Principal</h2>
-        <p>Informations sur ce panneau spécial.</p>
+        <h2>Prenons contact !</h2>
+        <p>Intéressé(e) par une collab ou juste envie de discuter ? Envoie-moi un mot !</p>
+        <a href="mailto:ton@email.com">ton@email.com</a><br>
+        <a href="https://linkedin.com/in/tonprofil" target="_blank">Mon LinkedIn</a><br>
+        <a href="https://github.com/tonprofil" target="_blank">Mon GitHub</a>
         <button class="closeOverlay">Fermer</button>
     </div>
 </div>
