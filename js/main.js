@@ -39,10 +39,9 @@ const teleportDelayDuration = 0.1; // 200 ms de délai
 
 
 const navigationDestinations = [
-    { id: "home", label: "Accueil", offsetAlong: 10, offsetLateral: -3 },
-    { id: "about", label: "À propos", offsetAlong: 30, offsetLateral: -3 },
-    { id: "projects", label: "Projets", offsetAlong: 50, offsetLateral: -3 },
-    { id: "contact", label: "Contact", offsetAlong: 70, offsetLateral: -3 }
+    { id: "about-me", label: "À propos de moi", offsetAlong: 10, offsetLateral: -3 },
+    { id: "projects", label: "Projets", offsetAlong: 30, offsetLateral: -3 },
+    { id: "contact", label: "Contacts", offsetAlong: 50, offsetLateral: -3 },
 ];
 
 // Fonctions
@@ -390,6 +389,10 @@ function init() {
     document.getElementById('enterSite').addEventListener('click', () => {
         document.getElementById('landingPage').classList.add('hidden');
     });
+
+    document.getElementById('enterSite').addEventListener('click', () => {
+        document.getElementById('landingPage').classList.add('hidden');
+    });
 }
 
 function exitFocusMode() {
@@ -444,9 +447,11 @@ function createLampPost(distance) {
 }
 
 function onMouseWheel(event) {
-    camera.zoom += event.deltaY * -0.005;
-    camera.zoom = Math.max(1, Math.min(10, camera.zoom));
-    camera.updateProjectionMatrix();
+    if (!overlayVisible) {
+        camera.zoom += event.deltaY * -0.005;
+        camera.zoom = Math.max(1, Math.min(10, camera.zoom));
+        camera.updateProjectionMatrix();
+    }
 }
 
 function onWindowResize() {
