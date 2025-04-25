@@ -15,6 +15,8 @@ body {
 
 canvas {
     display: block;
+    z-index: 1; /* Bas pour ne pas interférer avec les boutons */
+    pointer-events: none; /* Désactiver les interactions sur le canvas */
 }
 
 /* Loader */
@@ -55,12 +57,13 @@ canvas {
 
 /* Mobile Controls */
 #mobile-controls {
-    position: absolute;
+    position: fixed;
     bottom: 20px;
     left: 20px;
-    display: flex;
+    display: none;
     gap: 10px;
-    z-index: 100;
+    z-index: 1000; /* Augmenté pour être au-dessus du canvas */
+    pointer-events: auto; /* S'assurer que les clics passent */
 }
 
 #mobile-controls button {
@@ -71,6 +74,8 @@ canvas {
     border-radius: 50%;
     background-color: rgba(0, 0, 0, 0.6);
     color: #fff;
+    touch-action: manipulation; /* Optimiser pour les interactions tactiles */
+    pointer-events: auto;
 }
 
 #mobile-controls button.active {
@@ -85,18 +90,20 @@ canvas {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
-    z-index: 2000;
+    z-index: 2000; /* Augmenté pour être au-dessus de tout */
     display: flex;
     justify-content: center;
     align-items: center;
     visibility: hidden;
     opacity: 0;
     transition: visibility 0s, opacity 0.5s ease-out;
+    pointer-events: none; /* Bloque les clics par défaut */
 }
 
 .overlay:not(.hidden) {
     visibility: visible;
     opacity: 1;
+    pointer-events: auto; /* Active les clics quand ouvert */
 }
 
 .overlayContent {
@@ -109,7 +116,11 @@ canvas {
     overflow-y: auto;
     text-align: center;
     color: var(--cube-color);
+    z-index: 2100; /* Au-dessus du fond .overlay */
+    pointer-events: auto; /* Assure que le contenu est cliquable */
 }
+
+
 
 .overlayContent h2 {
     margin: 0 0 20px;
@@ -172,7 +183,7 @@ canvas {
     margin: 40px 0;
 }
 
-.about-section, .skills-section {
+.about-section {
     flex: 1;
     padding: 20px;
     text-align: left;
@@ -317,6 +328,9 @@ canvas {
     font-size: 18px;
     cursor: pointer;
     transition: background 0.3s ease;
+    z-index: 1000; /* Au-dessus du canvas et du fond */
+    pointer-events: auto;
+    touch-action: manipulation;
 }
 
 #enterSite:hover {
@@ -478,13 +492,379 @@ canvas {
     padding-left: 5px;
 }
 
+/* Projects Accordion */
+.projects-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.project-item {
+    margin-bottom: 10px;
+}
+
+.project-title {
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    background: #1a1a1a;
+    border: 1px solid var(--cube-color);
+    border-radius: 4px;
+    color: var(--cube-color);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.project-title:hover {
+    background: #2a2a2a;
+}
+
+.toggle-icon {
+    font-size: 14px;
+    color: var(--cube-color);
+}
+
+.project-item.open .toggle-icon i {
+    transform: rotate(180deg);
+}
+
+.project-details {
+    display: none;
+    padding: 15px;
+    background: #1a1a1a;
+    border: 1px solid var(--cube-color);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+
+.project-item.open .project-details {
+    display: block;
+}
+
+.project-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.project-tech {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+    justify-content: center
+}
+
+.project-tech li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #121212;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--cube-color);
+    font-size: 14px;
+    color: #e1e1e1;
+}
+
+.project-tech i {
+    font-size: 16px;
+    color: var(--cube-color);
+}
+
+/* Enigmes Cards */
+.enigmes-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.enigme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #1a1a1a;
+    border: 1px solid var(--cube-color);
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.enigme-icon {
+    display: block;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.enigme-icon i {
+    font-size: 24px;
+    color: var(--cube-color);
+}
+
+.enigme-img {
+    width: 100%;
+    max-width: 180px;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.enigme-card p {
+    margin: 0;
+    font-size: 14px;
+    color: #e1e1e1;
+    line-height: 1.5;
+    text-align: center;
+}
+
+
+/* Contact Form */
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 20px 0;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: var(--cube-color);
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Contact Form (ajout pour garantir les clics) */
+.form-group input,
+.form-group textarea {
+    background: #1a1a1a;
+    border: 1px solid var(--cube-color);
+    border-radius: 4px;
+    padding: 10px;
+    color: #e1e1e1;
+    font-size: 14px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    pointer-events: auto; /* Assure que les champs sont cliquables */
+}
+
+
+.form-group input {
+    height: 40px;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+    max-height: 300px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #9a6acc;
+}
+
+.submit-button {
+    background: var(--cube-color);
+    border: none;
+    border-radius: 4px;
+    padding: 12px 20px;
+    color: #121212;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+    align-self: center;
+}
+
+.submit-button:hover {
+    background: #9a6acc;
+}
+
+.form-message {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 14px;
+    color: #e1e1e1;
+}
+
+.form-message.success {
+    color: #66bb6a;
+}
+
+.form-message.error {
+    color: #ef5350;
+}
+
+/* Close Overlay Button */
+.closeOverlay {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    background: var(--cube-color); /* Carré violet */
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.closeOverlay:hover {
+    background: #9a6acc; /* Violet plus clair au survol */
+}
+
+.closeOverlay i {
+    font-size: 18px;
+    color: #000; /* Icône noire */
+}
+
+/* Images en format paysage */
+.project-img.landscape,
+.enigme-img.landscape {
+    max-width: 1000px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+/* Modal Image Agrandie */
+.image-overlay-content {
+    position: relative;
+    background: none;
+    border: none;
+    padding: 20px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.enlarged-image {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 2px solid var(--cube-color);
+}
+
+.close-image-overlay {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 30px;
+    height: 30px;
+    background: var(--cube-color);
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.close-image-overlay:hover {
+    background: #9a6acc;
+}
+
+.close-image-overlay i {
+    font-size: 18px;
+    color: #000;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-    /* Mobile Controls */
-    #mobile-controls {
-        display: flex;
+
+    .image-overlay-content {
+        padding: 15px;
     }
 
+    .enlarged-image {
+        max-height: 60vh;
+    }
+
+    .close-image-overlay {
+        width: 26px;
+        height: 26px;
+        top: -8px;
+        right: -8px;
+    }
+
+    .close-image-overlay i {
+        font-size: 16px;
+    }
+
+    .project-img.landscape,
+    .enigme-img.landscape {
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+
+    .closeOverlay {
+        width: 26px;
+        height: 26px;
+        top: 10px;
+        right: 10px;
+    }
+
+    .closeOverlay i {
+        font-size: 16px;
+    }
+
+    .contact-form {
+        gap: 15px;
+        margin: 15px 0;
+    }
+
+    .form-group label {
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        font-size: 13px;
+        padding: 8px;
+    }
+
+    .form-group input {
+        height: 36px;
+    }
+
+    .form-group textarea {
+        min-height: 80px;
+    }
+
+    .submit-button {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+
+    .form-message {
+        font-size: 12px;
+    }
+
+
+    #mobile-controls {
+        display: flex; /* Affiché sur mobile */
+    }
     /* Overlays (modals) */
     .overlayContent {
         width: 90%;
@@ -527,18 +907,22 @@ canvas {
         padding: 15px;
     }
 
+    .separator {
+        display: none;
+    }
+
     .skills-list {
-        gap: 12px;
-        margin-top: 15px;
+        gap: 8px;
+        margin-top: 10px;
     }
 
     .skills-list li {
-        padding: 10px 14px;
-        font-size: 14px;
+        padding: 6px 10px;
+        font-size: 12px;
     }
 
     .skills-list i {
-        font-size: 20px;
+        font-size: 16px;
     }
 
     .timeline {
@@ -635,5 +1019,62 @@ canvas {
     .instructions-content p,
     .instructions-content li {
         font-size: 13px;
+    }
+
+    /* Projects Accordion */
+    .project-title {
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+
+    .toggle-icon {
+        font-size: 12px;
+    }
+
+    .project-details {
+        padding: 12px;
+    }
+
+    .project-img {
+        margin-bottom: 10px;
+    }
+
+    .project-tech {
+        gap: 8px;
+    }
+
+    .project-tech li {
+        font-size: 12px;
+        padding: 5px 8px;
+    }
+
+    .project-tech i {
+        font-size: 14px;
+    }
+
+    /* Enigmes Cards */
+    .enigmes-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .enigme-card {
+        padding: 12px;
+    }
+
+    .enigme-img {
+        max-width: 150px;
+    }
+
+    .enigme-card p {
+        font-size: 13px;
+    }
+
+    .enigme-icon {
+        margin-bottom: 8px;
+    }
+
+    .enigme-icon i {
+        font-size: 20px;
     }
 }

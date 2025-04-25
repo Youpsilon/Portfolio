@@ -101,6 +101,11 @@ function teleportTo(destination) {
 }
 
 function onDocumentMouseDown(event) {
+    // Ignorer les clics si un modal est ouvert
+    if (overlayVisible) {
+        return;
+    }
+
     // Vérifier si le clic est sur un élément du menu
     const menu = document.getElementById('menu');
     const target = event.target;
@@ -108,7 +113,7 @@ function onDocumentMouseDown(event) {
         return; // Ne pas interférer avec les clics sur le menu
     }
 
-    event.preventDefault(); // Toujours bloquer pour le reste (panneaux)
+    event.preventDefault(); // Bloquer pour les panneaux
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
@@ -154,6 +159,14 @@ function showOverlay(overlayId) {
     if (overlay) {
         overlay.classList.remove('hidden');
         overlayVisible = true;
+        // Désactiver le raycasting pour les panneaux
+        panels.forEach(panel => {
+            panel.traverse(child => {
+                child.raycastEnabled = false; // Désactiver temporairement
+            });
+        });
+        // Désactiver les contrôles clavier pour le joueur
+        keys = {}; // Réinitialiser les touches
     }
 }
 
@@ -268,6 +281,13 @@ function init() {
     scene.add(moonLight);
 
     createNavigationPanels();
+
+    // Initialiser raycastEnabled pour les panneaux
+    panels.forEach(panel => {
+        panel.traverse(child => {
+            child.raycastEnabled = true; // Actif par défaut
+        });
+    });
 
     const roadLength = 200;
     const roadWidth = 5;
@@ -390,24 +410,140 @@ function init() {
         document.getElementById('landingPage').classList.add('hidden');
     });
 
+    document.querySelectorAll('.project-title').forEach(button => {
+        button.addEventListener('click', () => {
+            const projectItem = button.parentElement;
+            const isOpen = projectItem.classList.contains('open');
+
+            // Ferme tous les autres projets
+            document.querySelectorAll('.project-item').forEach(item => {
+                item.classList.remove('open');
+            });
+
+            // Ouvre ou ferme le projet cliqué
+            if (!isOpen) {
+                projectItem.classList.add('open');
+            }
+        });
+    });
+
     document.getElementById('enterSite').addEventListener('click', () => {
         document.getElementById('landingPage').classList.add('hidden');
+    });
+
+    emailjs.init("ydlixLM12lzNIierY"); // Remplace "user_123456789" par ta Public Key
+
+    // Gérer la soumission du formulaire
+    document.getElementById('contact-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formMessage = document.getElementById('form-message');
+
+        // Désactiver le bouton pendant l'envoi
+        const submitButton = form.querySelector('.submit-button');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Envoi...';
+
+        // Envoyer l'email via EmailJS
+        emailjs.sendForm('service_y0730wn', 'template_zqd9gls', form)
+            .then(() => {
+                formMessage.textContent = 'Message envoyé avec succès !';
+                formMessage.className = 'form-message success';
+                form.reset();
+            })
+            .catch((error) => {
+                formMessage.textContent = 'Erreur lors de l’envoi. Veuillez réessayer.';
+                formMessage.className = 'form-message error';
+                console.error('EmailJS error:', error);
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Envoyer';
+            });
+    });
+
+    // Gestion du clic sur les images des projets
+    document.querySelectorAll('.enigme-img, .project-img').forEach(img => {
+        img.addEventListener('click', () => {
+            const overlayImage = document.getElementById('overlay-image');
+            const enlargedImage = document.getElementById('enlarged-image');
+            enlargedImage.src = img.src;
+            enlargedImage.alt = img.alt;
+            overlayImage.classList.remove('hidden');
+            overlayVisible = true;
+            // Désactiver le raycasting pour les panneaux
+            panels.forEach(panel => {
+                panel.traverse(child => {
+                    child.raycastEnabled = false;
+                });
+            });
+        });
+    });
+
+    // Fermer le modal image
+    const closeImageOverlay = () => {
+        const overlayImage = document.getElementById('overlay-image');
+        overlayImage.classList.add('hidden');
+        // Vérifier si d'autres modals sont ouverts (projects, about-me, contact)
+        const otherOverlaysOpen = Array.from(document.querySelectorAll('.overlay:not(#overlay-image)')).some(overlay => !overlay.classList.contains('hidden'));
+        overlayVisible = otherOverlaysOpen;
+        // Réactiver le raycasting si aucun modal n'est ouvert
+        if (!overlayVisible) {
+            panels.forEach(panel => {
+                panel.traverse(child => {
+                    child.raycastEnabled = true;
+                });
+            });
+        }
+    };
+
+    document.querySelector('.close-image-overlay').addEventListener('click', closeImageOverlay);
+
+    // Fermer le modal image au clic sur le fond
+    document.getElementById('overlay-image').addEventListener('click', (event) => {
+        if (event.target === document.getElementById('overlay-image')) {
+            closeImageOverlay();
+        }
+    });
+
+    // Fermer le modal image avec la touche Échap
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !document.getElementById('overlay-image').classList.contains('hidden')) {
+            closeImageOverlay();
+        }
+    });
+
+    // Remplacer le gestionnaire global .overlay pour exclure #overlay-image
+    document.querySelectorAll('.overlay:not(#overlay-image)').forEach(overlay => {
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                exitFocusMode();
+            }
+        });
     });
 }
 
 function exitFocusMode() {
     document.querySelectorAll('.overlay').forEach(overlay => overlay.classList.add('hidden'));
     overlayVisible = false;
+    // Réactiver le raycasting pour les panneaux
+    panels.forEach(panel => {
+        panel.traverse(child => {
+            child.raycastEnabled = true; // Réactiver
+        });
+    });
     cameraStartPos.copy(camera.position);
     cameraStartZoom = camera.zoom;
     cameraStartLookAt.copy(cameraTargetLookAt);
     cameraTargetPos.copy(player.position).add(cameraOffset);
     cameraTargetZoom = 4;
-    cameraTargetLookAt.copy(player.position).add(new THREE.Vector3(0, 2, 0)); // Aligner avec le mode "follow"
+    cameraTargetLookAt.copy(player.position).add(new THREE.Vector3(0, 2, 0));
     cameraAnimationStartTime = performance.now();
     newCameraMode = "follow";
     cameraAnimating = true;
 }
+
 function createLampPost(distance) {
     const lampPostGroup = new THREE.Group();
     const forward = new THREE.Vector3(Math.cos(Math.PI / 4), 0, -Math.sin(Math.PI / 4));

@@ -5,6 +5,7 @@
     <title>Portfolio</title>
     <link rel="stylesheet" href="css/style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -12,7 +13,7 @@
     <button id="menu-toggle" aria-label="Ouvrir le menu">Menu</button>
     <div class="menu-content">
         <ul>
-            <li data-destination="about">À propos de moi</li>
+            <li data-destination="about-me">À propos de moi</li>
             <li data-destination="projects">Projets</li>
             <li data-destination="contact">Contact</li>
         </ul>
@@ -61,6 +62,7 @@
 <!-- Modal À propos de moi -->
 <div id="overlay-about-me" class="overlay hidden">
     <div class="overlayContent">
+        <span class="closeOverlay" aria-label="Fermer la fenêtre"><i class="fas fa-times"></i></span>
         <h2>À propos de moi</h2>
         <img src="asset/images/moi.jpg" alt="Photo de moi" class="profile-img">
         <div class="about-container">
@@ -109,47 +111,215 @@
                 </ul>
             </div>
         </div>
-        <button class="closeOverlay" aria-label="Fermer la fenêtre">Fermer</button>
     </div>
 </div>
 
 <!-- Modal Projets -->
 <div id="overlay-projects" class="overlay hidden">
     <div class="overlayContent">
-        <h2>Mes créations au fil du temps</h2>
-        <div class="projects-timeline">
-            <div class="project">
-                <h3>Mon premier site web (2020)</h3>
-                <p>Un site statique en HTML/CSS pour apprendre les bases.</p>
-                <img src="asset/images/projet1.jpg" alt="Projet 1" style="max-width: 100%;">
-                <a href="[lien]" target="_blank">Voir le projet</a>
-            </div>
-            <div class="project">
-                <h3>Jeu 2D en JS (2021)</h3>
-                <p>Un petit jeu avec canvas, ma première expérience interactive.</p>
-                <img src="asset/images/projet2.jpg" alt="Projet 2" style="max-width: 100%;">
-                <a href="[lien]" target="_blank">Voir le projet</a>
-            </div>
-            <div class="project">
-                <h3>Portfolio 3D (2025)</h3>
-                <p>Ce site ! Une route en Three.js pour présenter mon évolution.</p>
-                <img src="asset/images/projet3.jpg" alt="Projet 3" style="max-width: 100%;">
-                <p>Tu y es !</p>
-            </div>
-        </div>
-        <button class="closeOverlay">Fermer</button>
+        <span class="closeOverlay" aria-label="Fermer la fenêtre"><i class="fas fa-times"></i></span>
+        <h2>Mes projets</h2>
+        <ul class="projects-list">
+            <li class="project-item">
+                <button class="project-title">Escape Game Mobile : Enquête sur un Meurtre <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></button>
+                <div class="project-details">
+                    <p>Réalisation d’un escape game mobile en équipe dans le cadre d’un projet scolaire d’un mois à l’IUT. Nous avons conçu de A à Z un jeu immersif basé sur une enquête de meurtre avec 6 suspects. Le joueur résout une dizaine d’énigmes variées pour innocenter les suspects et identifier le coupable, en exploitant les capteurs du téléphone (gyroscope, accéléromètre, micro, etc.). J’ai participé à la conception du scénario, des énigmes, et au développement en React Native, incluant un faux téléphone avec reconnaissance vocale, un chatbot pour indices, et une gestion de comptes avec sauvegarde de progression.</p>
+                    <p><strong>Énigmes développées :</strong></p>
+                    <div class="enigmes-container">
+                        <div class="enigme-card">
+                            <span class="enigme-icon"><i class="fas fa-robot"></i></span>
+                            <img src="asset/images/projects/enigmes/chatbot.png" alt="Capture Chatbot" class="enigme-img">
+                            <p>Chatbot interactif fournissant des indices via reconnaissance textuelle.</p>
+                        </div>
+                        <div class="enigme-card">
+                            <span class="enigme-icon"><i class="fas fa-phone"></i></span>
+                            <img src="asset/images/projects/enigmes/telephone.png" alt="Capture Faux Téléphone" class="enigme-img">
+                            <p>Faux téléphone pour appeler un suspect, avec reconnaissance vocale déclenchant des réponses selon des mots-clés.</p>
+                        </div>
+                        <div class="enigme-card">
+                            <span class="enigme-icon"><i class="fas fa-compass"></i></span>
+                            <img src="asset/images/projects/enigmes/boussole.png" alt="Capture Boussole" class="enigme-img">
+                            <p>Boussole orientée en inclinant le téléphone dans différentes directions via le gyroscope.</p>
+                        </div>
+                        <div class="enigme-card">
+                            <span class="enigme-icon"><i class="fas fa-music"></i></span>
+                            <img src="asset/images/projects/enigmes/piano.png" alt="Capture Piano" class="enigme-img">
+                            <p>Piano virtuel où il faut rejouer une partition à l’oreille.</p>
+                        </div>
+                        <div class="enigme-card">
+                            <span class="enigme-icon"><i class="fas fa-puzzle-piece"></i></span>
+                            <img src="asset/images/projects/enigmes/tangram.png" alt="Capture Tangram" class="enigme-img">
+                            <p>Tangram interactif à résoudre sur l’écran tactile.</p>
+                        </div>
+                        <div class="enigme-card">
+                            <span class="enigme-icon"><i class="fas fa-barcode"></i></span>
+                            <img src="asset/images/projects/enigmes/binaire.png" alt="Capture Code Binaire" class="enigme-img">
+                            <p>Code binaire affiché après secouage du téléphone, à décoder pour trouver un numéro de salle.</p>
+                        </div>
+                    </div>
+                    <p><strong>Technologies :</strong></p>
+                    <ul class="project-tech">
+                        <li><i class="fab fa-react"></i> React Native</li>
+                        <li><i class="fas fa-mobile-alt"></i> Android Studio</li>
+                        <li><i class="fab fa-js"></i> JavaScript</li>
+                        <li><i class="fas fa-microphone"></i> Reconnaissance vocale</li>
+                        <li><i class="fas fa-compass"></i> Capteurs (gyroscope, accéléromètre)</li>
+                    </ul>
+                    <p><strong>Statut :</strong> Projet scolaire (prototype non publié, réalisé en équipe).</p>
+                </div>
+            </li>
+
+
+
+            <li class="project-item">
+                <button class="project-title">Application de Gestion de Jardin Partagé <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></button>
+                <div class="project-details">
+                    <p>Développement d’une application mobile dans le cadre d’un projet scolaire. L’application permet de gérer un jardin partagé en visualisant les parcelles, leurs cultures et leur état. Chaque parcelle est représentée avec un code couleur (vert pour prêt à récolter, rouge pour en pousse, marron pour les chemins) et affiche une image du légume planté. En cliquant sur une parcelle, l’utilisateur peut modifier le légume, son statut, et consulter la date du dernier arrosage. Un bouton permet de marquer une parcelle comme arrosée. J’ai contribué à la conception de l’interface et à la logique de gestion des parcelles.</p>
+                    <p><strong>Captures d’écran :</strong></p>
+                    <div class="enigmes-container">
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/jardin/jardin-overview.jpg" alt="Vue du Jardin" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-seedling"></i></span>
+                                <p>Vue d’ensemble du jardin avec les parcelles, chemins, et codes couleur.</p>
+                            </div>
+                        </div>
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/jardin/jardin-parcelle.jpg" alt="Détail d’une Parcelle" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-carrot"></i></span>
+                                <p>Détail d’une parcelle, permettant de modifier le légume, le statut, et de marquer l’arrosage.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p><strong>Technologies :</strong></p>
+                    <ul class="project-tech">
+                        <li><i class="fas fa-mobile-alt"></i> Android Studio</li>
+                        <li><i class="fab fa-java"></i> Java</li>
+                        <li><i class="fab fa-android"></i> XML (UI)</li>
+                    </ul>
+                    <p><strong>Statut :</strong> Projet scolaire (prototype non publié, réalisé en équipe de 2).</p>
+                </div>
+            </li>
+            <li class="project-item">
+                <button class="project-title">TroDraule : E-commerce de Mèmes <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></button>
+                <div class="project-details">
+                    <p>Développement d’une application mobile e-commerce en React Native dans le cadre d’un projet scolaire. TroDraule permet d’acheter des mèmes drôles via une interface optimisée pour smartphones. Connectée à Firebase pour l’authentification et la gestion des données, l’application offre des fonctionnalités classiques d’e-commerce : consultation des mèmes avec filtres (Tout, Drôle, Pas Drôle, Ça passe), ajout au panier, favoris, profil utilisateur avec historique des commandes, et commande fictive via un bouton “Payer par la pensée”. J’ai contribué à la conception de l’interface, à l’intégration de Firebase, et à la logique des interactions (panier, favoris).</p>
+                    <p><strong>Captures d’écran :</strong></p>
+                    <div class="enigmes-container">
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/trodraule/connexion.jpg" alt="Page de Connexion" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-sign-in-alt"></i></span>
+                                <p>Page de connexion avec création de compte, gérée via Firebase Authentication.</p>
+                            </div>
+                        </div>
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/trodraule/accueil.jpg" alt="Page d’Accueil" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-home"></i></span>
+                                <p>Page d’accueil affichant tous les mèmes avec filtres (Tout, Drôle, Pas Drôle, Ça passe).</p>
+                            </div>
+                        </div>
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/trodraule/produit.jpg" alt="Détail d’un Produit" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-image"></i></span>
+                                <p>Détail d’un mème avec options pour ajouter au panier ou mettre en favoris.</p>
+                            </div>
+                        </div>
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/trodraule/profil.jpg" alt="Page Profil" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-user"></i></span>
+                                <p>Page profil avec infos utilisateur, mèmes favoris, historique des commandes, et déconnexion.</p>
+                            </div>
+                        </div>
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/trodraule/panier.jpg" alt="Page Panier" class="enigme-img">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-shopping-cart"></i></span>
+                                <p>Page panier pour consulter les mèmes, les supprimer, et passer commande.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p><strong>Technologies :</strong></p>
+                    <ul class="project-tech">
+                        <li><i class="fab fa-react"></i> React Native</li>
+                        <li><i class="fas fa-mobile-alt"></i> Android Studio</li>
+                        <li><i class="fab fa-js"></i> JavaScript</li>
+                        <li><i class="fas fa-database"></i> Firebase (Authentication, Firestore)</li>
+                    </ul>
+                    <p><strong>Statut :</strong> Projet scolaire (prototype non publié, réalisé en équipe).</p>
+                </div>
+            </li>
+
+            <li class="project-item">
+                <button class="project-title">Portfolio Interactif 3D <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></button>
+                <div class="project-details">
+                    <p>Création de mon portfolio personnel sous forme d’une expérience interactive en 3D. Le site utilise Three.js pour une scène 3D immersive où un personnage animé (un renard) navigue sur une route avec des panneaux menant à des sections (À propos, Projets, Contact). J’ai modélisé le personnage, les lampadaires, et le décor dans Blender, réalisant ma première animation de personnage avec rigging et squelette. J’ai également géré la diffusion de la lumière des lampadaires via Three.js pour un rendu nocturne réaliste. Le portfolio intègre un formulaire de contact avec EmailJS et des animations CSS pour une interface moderne.</p>
+                    <p><strong>Captures d’écran :</strong></p>
+                    <div class="enigmes-container">
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/portfolio/renard.png" alt="Personnage et Squelette" class="enigme-img landscape">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-paw"></i></span>
+                                <p>Personnage renard modélisé et animé dans Blender, avec rigging et squelette pour ma première animation.</p>
+                            </div>
+                        </div>
+                        <div class="enigme-card">
+                            <img src="asset/images/projects/portfolio/decors.png" alt="Décor 3D" class="enigme-img landscape">
+                            <div class="enigme-content">
+                                <span class="enigme-icon"><i class="fas fa-tree"></i></span>
+                                <p>Décor 3D avec tout les petits élément comme les fleurs, les souches, les arbres, etc...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p><strong>Technologies :</strong></p>
+                    <ul class="project-tech">
+                        <li><i class="fab fa-js"></i> JavaScript</li>
+                        <li><i class="fas fa-cube"></i> Three.js</li>
+                        <li><i class="fas fa-paint-brush"></i> Blender</li>
+                        <li><i class="fab fa-html5"></i> HTML/CSS</li>
+                        <li><i class="fas fa-envelope"></i> EmailJS</li>
+                    </ul>
+                    <p><strong>Statut :</strong> Projet personnel (en ligne, 2024).</p>
+                </div>
+            </li>
+        </ul>
     </div>
 </div>
 
 <!-- Modal Contact -->
 <div id="overlay-contact" class="overlay hidden">
     <div class="overlayContent">
-        <h2>Prenons contact !</h2>
-        <p>Intéressé(e) par une collab ou juste envie de discuter ? Envoie-moi un mot !</p>
-        <a href="mailto:ton@email.com">ton@email.com</a><br>
-        <a href="https://linkedin.com/in/tonprofil" target="_blank">Mon LinkedIn</a><br>
-        <a href="https://github.com/tonprofil" target="_blank">Mon GitHub</a>
-        <button class="closeOverlay">Fermer</button>
+        <span class="closeOverlay" aria-label="Fermer la fenêtre"><i class="fas fa-times"></i></span>
+        <h2>Contactez-moi</h2>
+        <p>Envoyez-moi un message, je vous répondrai dès que possible !</p>
+        <form id="contact-form" class="contact-form">
+            <div class="form-group">
+                <label for="name">Nom</label>
+                <input type="text" id="name" name="name" required placeholder="Votre nom">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required placeholder="Votre email">
+            </div>
+            <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" name="message" required placeholder="Votre message"></textarea>
+            </div>
+            <button type="submit" class="submit-button">Envoyer</button>
+        </form>
+        <div id="form-message" class="form-message"></div>
+    </div>
+</div>
+
+<!-- Modal Image Agrandie -->
+<div id="overlay-image" class="overlay hidden">
+    <div class="image-overlay-content">
+        <span class="close-image-overlay" aria-label="Fermer l’image"><i class="fas fa-times"></i></span>
+        <img id="enlarged-image" src="" alt="Image agrandie" class="enlarged-image">
     </div>
 </div>
 
