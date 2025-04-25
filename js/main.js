@@ -206,7 +206,7 @@ function init() {
     const menuToggle = document.getElementById('menu-toggle');
     if (menuToggle) {
         menuToggle.addEventListener('click', (event) => {
-            event.stopPropagation(); // Empêche le clic de descendre jusqu’à onDocumentMouseDown
+            event.stopPropagation();
             const menuContent = document.querySelector('.menu-content');
             menuContent.classList.toggle('open');
         });
@@ -215,11 +215,11 @@ function init() {
     // Listener pour les items du menu
     document.querySelectorAll('#menu li').forEach(item => {
         item.addEventListener('click', (event) => {
-            event.stopPropagation(); // Empêche le clic de descendre
+            event.stopPropagation();
             const destinationId = item.getAttribute('data-destination');
-            const destination = navigationDestinations.find(dest => dest.id === destinationId); // Utilise navigationDestinations
-            if (destination) teleportTo(destination); // Correction ici : juste teleportTo
-            document.querySelector('.menu-content')?.classList.remove('open'); // Ferme le menu après clic
+            const destination = navigationDestinations.find(dest => dest.id === destinationId);
+            if (destination) teleportTo(destination);
+            document.querySelector('.menu-content')?.classList.remove('open');
         });
     });
 
@@ -245,7 +245,6 @@ function init() {
     renderer.domElement.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) initialPinchDistance = null;
     });
-
 
     const leftBtn = document.getElementById("left");
     if (leftBtn) {
@@ -282,10 +281,9 @@ function init() {
 
     createNavigationPanels();
 
-    // Initialiser raycastEnabled pour les panneaux
     panels.forEach(panel => {
         panel.traverse(child => {
-            child.raycastEnabled = true; // Actif par défaut
+            child.raycastEnabled = true;
         });
     });
 
@@ -406,46 +404,51 @@ function init() {
     window.addEventListener("wheel", onMouseWheel, false);
     window.addEventListener("mousedown", onDocumentMouseDown, false);
 
-    document.getElementById('enterSite').addEventListener('click', () => {
-        document.getElementById('landingPage').classList.add('hidden');
-    });
+    // Gestion du bouton #enterSite
+    const enterSiteButton = document.getElementById('enterSite');
+    if (enterSiteButton) {
+        enterSiteButton.addEventListener('click', () => {
+            document.getElementById('landingPage').classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById('instructionsPopup').classList.remove('hidden');
+            }, 500);
+        });
+        enterSiteButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            document.getElementById('landingPage').classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById('instructionsPopup').classList.remove('hidden');
+            }, 500);
+        });
+    }
 
     document.querySelectorAll('.project-title').forEach(button => {
         button.addEventListener('click', () => {
             const projectItem = button.parentElement;
             const isOpen = projectItem.classList.contains('open');
 
-            // Ferme tous les autres projets
             document.querySelectorAll('.project-item').forEach(item => {
                 item.classList.remove('open');
             });
 
-            // Ouvre ou ferme le projet cliqué
             if (!isOpen) {
                 projectItem.classList.add('open');
             }
         });
     });
 
-    document.getElementById('enterSite').addEventListener('click', () => {
-        document.getElementById('landingPage').classList.add('hidden');
-    });
+    emailjs.init("ydlixLM12lzNIierY");
 
-    emailjs.init("ydlixLM12lzNIierY"); // Remplace "user_123456789" par ta Public Key
-
-    // Gérer la soumission du formulaire
     document.getElementById('contact-form').addEventListener('submit', function(event) {
         event.preventDefault();
 
         const form = event.target;
         const formMessage = document.getElementById('form-message');
 
-        // Désactiver le bouton pendant l'envoi
         const submitButton = form.querySelector('.submit-button');
         submitButton.disabled = true;
         submitButton.textContent = 'Envoi...';
 
-        // Envoyer l'email via EmailJS
         emailjs.sendForm('service_y0730wn', 'template_zqd9gls', form)
             .then(() => {
                 formMessage.textContent = 'Message envoyé avec succès !';
@@ -463,7 +466,6 @@ function init() {
             });
     });
 
-    // Gestion du clic sur les images des projets
     document.querySelectorAll('.enigme-img, .project-img').forEach(img => {
         img.addEventListener('click', () => {
             const overlayImage = document.getElementById('overlay-image');
@@ -472,7 +474,6 @@ function init() {
             enlargedImage.alt = img.alt;
             overlayImage.classList.remove('hidden');
             overlayVisible = true;
-            // Désactiver le raycasting pour les panneaux
             panels.forEach(panel => {
                 panel.traverse(child => {
                     child.raycastEnabled = false;
@@ -481,14 +482,11 @@ function init() {
         });
     });
 
-    // Fermer le modal image
     const closeImageOverlay = () => {
         const overlayImage = document.getElementById('overlay-image');
         overlayImage.classList.add('hidden');
-        // Vérifier si d'autres modals sont ouverts (projects, about-me, contact)
         const otherOverlaysOpen = Array.from(document.querySelectorAll('.overlay:not(#overlay-image)')).some(overlay => !overlay.classList.contains('hidden'));
         overlayVisible = otherOverlaysOpen;
-        // Réactiver le raycasting si aucun modal n'est ouvert
         if (!overlayVisible) {
             panels.forEach(panel => {
                 panel.traverse(child => {
@@ -500,21 +498,18 @@ function init() {
 
     document.querySelector('.close-image-overlay').addEventListener('click', closeImageOverlay);
 
-    // Fermer le modal image au clic sur le fond
     document.getElementById('overlay-image').addEventListener('click', (event) => {
         if (event.target === document.getElementById('overlay-image')) {
             closeImageOverlay();
         }
     });
 
-    // Fermer le modal image avec la touche Échap
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !document.getElementById('overlay-image').classList.contains('hidden')) {
             closeImageOverlay();
         }
     });
 
-    // Remplacer le gestionnaire global .overlay pour exclure #overlay-image
     document.querySelectorAll('.overlay:not(#overlay-image)').forEach(overlay => {
         overlay.addEventListener('click', (event) => {
             if (event.target === overlay) {
@@ -523,6 +518,8 @@ function init() {
         });
     });
 }
+
+// ... (le reste du code main.js reste inchangé : createNavigationPanel, teleportTo, etc.)
 
 function exitFocusMode() {
     document.querySelectorAll('.overlay').forEach(overlay => overlay.classList.add('hidden'));

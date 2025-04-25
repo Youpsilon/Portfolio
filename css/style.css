@@ -40,6 +40,11 @@ canvas {
     pointer-events: none;
 }
 
+/* Assure que les enfants du loader masqué n'interceptent pas les clics */
+#loader.hidden * {
+    pointer-events: none;
+}
+
 .spinner {
     border: 8px solid #f3f3f3;
     border-top: 8px solid var(--cube-color);
@@ -62,7 +67,7 @@ canvas {
     left: 20px;
     display: none;
     gap: 10px;
-    z-index: 1000; /* Augmenté pour être au-dessus du canvas */
+    z-index: 1000; /* Au-dessus du canvas */
     pointer-events: auto; /* S'assurer que les clics passent */
 }
 
@@ -90,7 +95,7 @@ canvas {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
-    z-index: 2000; /* Augmenté pour être au-dessus de tout */
+    z-index: 2000; /* Au-dessus de tout */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -106,6 +111,10 @@ canvas {
     pointer-events: auto; /* Active les clics quand ouvert */
 }
 
+.overlay.hidden * {
+    pointer-events: none; /* Désactive les clics pour tous les enfants quand masqué */
+}
+
 .overlayContent {
     background: rgba(0, 0, 0, 1);
     border: 2px solid var(--cube-color);
@@ -117,10 +126,8 @@ canvas {
     text-align: center;
     color: var(--cube-color);
     z-index: 2100; /* Au-dessus du fond .overlay */
-    pointer-events: auto; /* Assure que le contenu est cliquable */
+    pointer-events: auto; /* Assure que le contenu est cliquable quand visible */
 }
-
-
 
 .overlayContent h2 {
     margin: 0 0 20px;
@@ -286,6 +293,11 @@ canvas {
     pointer-events: none;
 }
 
+/* Désactive les clics pour tous les enfants de #landingPage masqué */
+#landingPage.hidden * {
+    pointer-events: none;
+}
+
 #landingPage #particles-js {
     position: absolute;
     top: 0;
@@ -293,11 +305,12 @@ canvas {
     width: 100%;
     height: 100%;
     z-index: 1;
+    pointer-events: none; /* Empêche les particules d'interférer */
 }
 
 #landingPage .landingContent {
     position: relative;
-    z-index: 2;
+    z-index: 1500; /* Au-dessus du canvas et des particules */
     text-align: center;
     max-width: 600px;
     padding: 20px;
@@ -328,7 +341,7 @@ canvas {
     font-size: 18px;
     cursor: pointer;
     transition: background 0.3s ease;
-    z-index: 1000; /* Au-dessus du canvas et du fond */
+    z-index: 1500; /* Au-dessus de tout */
     pointer-events: auto;
     touch-action: manipulation;
 }
@@ -434,6 +447,14 @@ canvas {
 .instructions-popup:not(.hidden) {
     opacity: 1;
     transform: translateY(0);
+}
+
+.instructions-popup.hidden {
+    pointer-events: none; /* Désactive les clics quand masqué */
+}
+
+.instructions-popup.hidden * {
+    pointer-events: none; /* Désactive les clics pour les enfants */
 }
 
 .instructions-content {
@@ -625,7 +646,6 @@ canvas {
     text-align: center;
 }
 
-
 /* Contact Form */
 .contact-form {
     display: flex;
@@ -661,7 +681,6 @@ canvas {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     pointer-events: auto; /* Assure que les champs sont cliquables */
 }
-
 
 .form-group input {
     height: 40px;
@@ -791,7 +810,6 @@ canvas {
 
 /* Responsive */
 @media (max-width: 768px) {
-
     .image-overlay-content {
         padding: 15px;
     }
@@ -861,10 +879,10 @@ canvas {
         font-size: 12px;
     }
 
-
     #mobile-controls {
         display: flex; /* Affiché sur mobile */
     }
+
     /* Overlays (modals) */
     .overlayContent {
         width: 90%;
